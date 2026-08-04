@@ -3,38 +3,35 @@ import pygame
 from game.board import Board
 from utils.constants import (
     BOARD_SIZE,
-    DARK_SQUARE,
+    SQUARE_SIZE,
     LIGHT_SQUARE,
-    WINDOW_HEIGHT,
-    WINDOW_WIDTH,
+    DARK_SQUARE,
+    SELECTED_SQUARE,
+    LEGAL_MOVE,
+    CAPTURE_MOVE,
+    TEXT_COLOR,
+    PIECE_FONT,
+    PIECE_FONT_SIZE,
 )
 
 
 class BoardView:
-    """Handles the visual display of the chess board."""
+    """Handles the graphical display of the chess board."""
 
     def __init__(self, screen: pygame.Surface) -> None:
         self.screen = screen
 
-        # Keep the board square on the screen.
-        self.board_pixel_size = min(
-            WINDOW_WIDTH,
-            WINDOW_HEIGHT
-        )
+        self.selected_square = None
+        self.legal_moves = []
 
-        self.square_size = (
-            self.board_pixel_size // BOARD_SIZE
-        )
-
-        # Fonts
         self.piece_font = pygame.font.SysFont(
-            "dejavusans",
-            56
+            PIECE_FONT,
+            PIECE_FONT_SIZE
         )
 
         self.coordinate_font = pygame.font.SysFont(
-            "arial",
-            16
+            "dejavusans",
+            14
         )
 
     def draw(self, board: Board) -> None:
@@ -45,7 +42,7 @@ class BoardView:
         self.draw_pieces(board)
 
     def draw_squares(self) -> None:
-        """Draw all 64 chess board squares."""
+        """Draw all 64 chess squares."""
 
         for row in range(BOARD_SIZE):
             for col in range(BOARD_SIZE):
@@ -56,10 +53,10 @@ class BoardView:
                     square_color = DARK_SQUARE
 
                 rectangle = pygame.Rect(
-                    col * self.square_size,
-                    row * self.square_size,
-                    self.square_size,
-                    self.square_size,
+                    col * SQUARE_SIZE,
+                    row * SQUARE_SIZE,
+                    SQUARE_SIZE,
+                    SQUARE_SIZE
                 )
 
                 pygame.draw.rect(
@@ -68,105 +65,137 @@ class BoardView:
                     rectangle
                 )
 
+                # Highlight selected square.
+                if self.selected_square == (row, col):
+                    pygame.draw.rect(
+                        self.screen,
+                        SELECTED_SQUARE,
+                        rectangle
+                    )
+
+                # Highlight legal moves.
+                if (row, col) in self.legal_moves:
+                    pygame.draw.circle(
+                        self.screen,
+                        LEGAL_MOVE,
+                        rectangle.center,
+                        10
+                    )
+
+    def draw_pieces(self, board: Board) -> None:
+        """Draw all chess pieces."""
+
+        for row in range(BOARD_SIZE):
+            for col in range(BOARD_SIZE):
+
+                piece = board.get_piece(
+                    row,
+                    col
+                )
+
+                if piece is None:
+                    continue
+
+                symbol = piece.symbol()
+
+                text = self.piece_font.render(
+                    symbol,
+                    True,
+                    TEXT_COLOR
+                )
+
+                rectangle = pygame.Rect(
+                    col * SQUARE_SIZE,
+                    row * SQUARE_SIZE,
+                    SQUARE_SIZE,
+                    SQUARE_SIZE
+                )
+
+                text_rectangle = text.get_rect(
+                    center=rectangle.center
+                )
+
+                self.screen.blit(
+                    text,
+                    text_rectangle
+                )
+
     def draw_coordinates(self) -> None:
         """Draw chess board coordinates."""
 
         files = "abcdefgh"
+        ranks = "87654321"
+
+        for col in range(BOARD_SIZE):
+
+            file_text = self.coordinate_font.render(
+                files[col],
+                True,
+                TEXT_COLOR
+            )
+
+            self.screen.blit(
+                file_text,
+                (
+                    col * SQUARE_SIZE + 5,
+                    BOARD_SIZE * SQUARE_SIZE - 20
+                )
+            )
 
         for row in range(BOARD_SIZE):
-            for col in range(BOARD_SIZE):
 
-                # Only draw coordinates near the edges.
-                if col == 0:
-                    rank = str(8 - row)
+            rank_text = self.coordinate_font.render(
+                ranks[row],
+                True,
+                TEXT_COLOR
+            )
 
-                    text = self.coordinate_font.render(
-                        rank,
-                        True,
-                        self.get_coordinate_color(row, col)
-                    )
+            self.screen.blit(
+                rank_text,
+                (
+                    5,
+                    row * SQUARE_SIZE + 5
+                )
+            )
 
-                    self.screen.blit(
-                        text,
-                        (
-                            col * self.square_size + 5,
-                            row * self.square_size + 5
-                        )
-                    )
-
-                if row == BOARD_SIZE - 1:
-                    file_name = files[col]
-
-                    text = self.coordinate_font.render(
-                        file_name,
-                        True,
-                        self.get_coordinate_color(row, col)
-                    )
-
-                    text_rect = text.get_rect()
-
-                    text_rect.bottomright = (
-                        (col + 1) * self.square_size - 5,
-                        (row + 1) * self.square_size - 5
-                    )
-
-                    self.screen.blit(
-                        text,
-                        text_rect
-                    )
-
-    def get_coordinate_color(
+    def select_square(
         self,
         row: int,
         col: int
-    ) -> tuple[int, int, int]:
-        """Return a readable coordinate color."""
-
-        if (row + col) % 2 == 0:
-            return DARK_SQUARE
-
-        return LIGHT_SQUARE
-
-    def draw_pieces(self, board: Board) -> None:
-        """Draw all pieces currently on the board."""
-
-        for row in range(BOARD_SIZE):
-            for col in range(BOARD_SIZE):
-
-                piece = board.get_piece(row, col)
-
-                if piece is not None:
-                    rectangle = pygame.Rect(
-                        col * self.square_size,
-                        row * self.square_size,
-                        self.square_size,
-                        self.square_size,
-                    )
-
-                    self.draw_piece(
-                        piece.symbol(),
-                        rectangle
-                    )
-
-    def draw_piece(
-        self,
-        symbol: str,
-        rectangle: pygame.Rect
     ) -> None:
-        """Draw an individual chess piece."""
+        """Select a chess square."""
 
-        # Draw the piece using a Unicode chess symbol.
-        text = self.piece_font.render(
-            symbol,
-            True,
-            (20, 20, 20)
-        )
+        self.selected_square = (row, col)
 
-        text_rect = text.get_rect(
-            center=rectangle.center
-        )
+    def clear_selection(self) -> None:
+        """Clear the current square selection."""
 
-        self.screen.blit(
-            text,
-            text_rect
-        )
+        self.selected_square = None
+        self.legal_moves = []
+
+    def set_legal_moves(
+        self,
+        moves: list[tuple[int, int]]
+    ) -> None:
+        """Set the squares that can currently be moved to."""
+
+        self.legal_moves = moves
+
+    def get_square_from_mouse(
+        self,
+        mouse_position: tuple[int, int]
+    ) -> tuple[int, int] | None:
+        """Convert mouse coordinates into board coordinates."""
+
+        mouse_x, mouse_y = mouse_position
+
+        col = mouse_x // SQUARE_SIZE
+        row = mouse_y // SQUARE_SIZE
+
+        if (
+            0 <= row < BOARD_SIZE
+            and 0 <= col < BOARD_SIZE
+        ):
+            return row, col
+
+        return None
