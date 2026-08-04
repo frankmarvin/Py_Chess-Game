@@ -3,11 +3,15 @@ from enum import Enum
 
 
 class PieceColor(Enum):
+    """The two possible chess piece colors."""
+
     WHITE = "white"
     BLACK = "black"
 
 
 class PieceType(Enum):
+    """The six types of chess pieces."""
+
     KING = "king"
     QUEEN = "queen"
     ROOK = "rook"
@@ -18,11 +22,13 @@ class PieceType(Enum):
 
 @dataclass
 class Piece:
+    """Represents a chess piece."""
+
     color: PieceColor
     piece_type: PieceType
 
     def symbol(self) -> str:
-        """Return the Unicode symbol for the chess piece."""
+        """Return the Unicode symbol for the piece."""
 
         symbols = {
             # White pieces
@@ -44,6 +50,17 @@ class Piece:
 
         return symbols[(self.color, self.piece_type)]
 
+    def is_white(self) -> bool:
+        """Return True if the piece is white."""
+
+        return self.color == PieceColor.WHITE
+
+    def is_black(self) -> bool:
+        """Return True if the piece is black."""
+
+        return self.color == PieceColor.BLACK
+
     def __str__(self) -> str:
-        """Return the piece symbol when converted to text."""
+        """Return the piece's chess symbol."""
+
         return self.symbol()
